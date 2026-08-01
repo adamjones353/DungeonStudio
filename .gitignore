@@ -1,0 +1,61 @@
+  .NET build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+*.trx
+coverage/
+coverage.*
+
+  Local/bundled SDK and CLI state
+.dotnet/
+.dotnet-home/
+
+  Visual Studio, VS Code, and JetBrains Rider
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+  NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# DungeonStudio user data and generated exports
+*.terrainproject
+*.terrainproject.autosave
+*.terrainproject.recovery*
+*.stl
+*.STL
+*.3mf
+*.gcode
+*.obj
+scratch/
+
+  Local logs, caches, and temporary files
+*.log
+*.tmp
+*.temp
+*.cache
+*.bak
+*.backup
+*.previous
+*.previous-*
+
+  Windows metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+  User-specific macOS/Linux metadata when working cross-platform
+.DS_Store
+*~
+

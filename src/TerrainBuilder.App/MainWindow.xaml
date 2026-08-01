@@ -1,0 +1,478 @@
+<Window x:Class="TerrainBuilder.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hx="http://helix-toolkit.org/wpf/SharpDX"
+        xmlns:vm="clr-namespace:TerrainBuilder.App.ViewModels"
+        mc:Ignorable="d"
+        Title="DungeonStudio"
+        Width="1500"
+        Height="930"
+        MinWidth="1080"
+        MinHeight="700"
+        Background="{StaticResource WindowBrush}"
+        Foreground="{StaticResource TextBrush}"
+        WindowStartupLocation="CenterScreen">
+    <Window.InputBindings>
+        <KeyBinding Key="Delete" Command="{Binding Scene.DeleteSelectedCommand}" />
+        <KeyBinding Key="C" Modifiers="Control" Command="{Binding Scene.CopySelectedCommand}" />
+        <KeyBinding Key="V" Modifiers="Control" Command="{Binding Scene.PasteCommand}" />
+        <KeyBinding Key="F" Command="{Binding Scene.FrameSceneCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveProjectCommand}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding LoadProjectCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="58" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="31" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#151A16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="14,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="350" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="36" Height="36" Background="{StaticResource AccentBrush}" CornerRadius="5">
+                        <TextBlock Text="DS" Foreground="#1C170D" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="DungeonStudio" FontFamily="Georgia" FontSize="19" />
+                        <TextBlock Text="NATIVE TABLETOP PLANNER" Foreground="{StaticResource AccentBrush}" FontSize="8" FontWeight="Bold" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" FontFamily="Georgia" FontSize="15" TextAlignment="Center" Width="280" />
+                    <TextBlock Text="{Binding IsDirty, StringFormat=Unsaved changes: {0}}" Foreground="{StaticResource MutedBrush}" FontSize="9" HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Open Project" Command="{Binding LoadProjectCommand}" />
+                    <Button Content="Save Project" Command="{Binding SaveProjectCommand}" Background="{StaticResource AccentBrush}" Foreground="#1E180D" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="370" MinWidth="260" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="*" MinWidth="380" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="330" MinWidth="260" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Margin="14,14,14,9">
+                        <TextBlock Text="MODEL LIBRARY" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold" />
+                        <DockPanel Margin="0,3,0,0">
+                            <TextBlock Text="STL collection" FontFamily="Georgia" FontSize="20" />
+                            <Border DockPanel.Dock="Right" Background="{StaticResource RaisedBrush}" CornerRadius="12" Padding="8,3">
+                                <TextBlock Text="{Binding Library.VisibleModelCount}" FontSize="10" />
+                            </Border>
+                        </DockPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Margin="11,0,11,9">
+                        <Button Content="Choose Library Folder" Command="{Binding BrowseLibraryCommand}" HorizontalContentAlignment="Left" />
+                        <TextBlock Text="{Binding Library.RootFolder, TargetNullValue=No folder selected}" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="6,2" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="2" Margin="14,0,14,10">
+                        <TextBox Text="{Binding Library.SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by filename or folder" />
+                        <TextBlock Text="Search models..." Foreground="#778077" Margin="9,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Library.SearchText}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <TreeView Grid.Row="3"
+                              ItemsSource="{Binding Library.RootNodes}"
+                              PreviewMouseLeftButtonDown="LibraryTreePreviewMouseLeftButtonDown"
+                              PreviewMouseMove="LibraryTreePreviewMouseMove"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Padding="6,0"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling"
+                              SelectedItemChanged="LibraryTreeSelectionChanged"
+                              MouseDoubleClick="LibraryItemDoubleClick">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:LibraryTreeNodeViewModel}" ItemsSource="{Binding Children}">
+                                <Grid MinHeight="28" Margin="2">
+                                    <Border x:Name="PreviewPanel"
+                                            Height="160"
+                                            MinWidth="210"
+                                            Margin="3"
+                                            HorizontalAlignment="Stretch"
+                                            Background="#0C110D"
+                                            BorderBrush="#354037"
+                                            BorderThickness="1"
+                                            CornerRadius="5"
+                                            ToolTipService.InitialShowDelay="250"
+                                            ToolTipService.ShowDuration="30000">
+                                        <Border.ToolTip>
+                                            <ToolTip Background="{StaticResource PanelBrush}"
+                                                     Foreground="{StaticResource TextBrush}"
+                                                     BorderBrush="{StaticResource AccentBrush}"
+                                                     BorderThickness="1"
+                                                     Padding="10">
+                                                <StackPanel Width="440">
+                                                    <Border Height="330" Background="#0C110D" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
+                                                    <TextBlock Text="{Binding DimensionsDisplay}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,5,0,0" />
+                                                    <TextBlock Text="{Binding FullPath}" Foreground="{StaticResource MutedBrush}" FontSize="9" TextWrapping="Wrap" Margin="0,5,0,0" />
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Border.ToolTip>
+                                        <Grid>
+                                            <Image Source="{Binding Thumbnail}"
+                                                   Stretch="Uniform"
+                                                   SnapsToDevicePixels="True"
+                                                   IsHitTestVisible="False"
+                                                   Loaded="ThumbnailImageLoaded" />
+                                            <TextBlock Text="STL preview"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       FontSize="10"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLoadingThumbnail}" Value="True">
+                                                                <Setter Property="Text" Value="Generating preview..." />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel x:Name="FolderDetails"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Visibility="Collapsed"
+                                                Margin="3,5">
+                                        <TextBlock Text="FOLDER" Foreground="{StaticResource AccentBrush}" FontSize="8" FontWeight="Bold" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Children.Count, StringFormat=  ({0})}" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <HierarchicalDataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsFolder}" Value="True">
+                                        <Setter TargetName="PreviewPanel" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="FolderDetails" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                        <Setter TargetName="PreviewPanel" Property="Opacity" Value="0.75" />
+                                    </DataTrigger>
+                                </HierarchicalDataTemplate.Triggers>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+
+                    <Grid Grid.Row="4" Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Content="Add Selected" Command="{Binding AddSelectedModelCommand}" />
+                        <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshLibraryCommand}" />
+                    </Grid>
+
+                    <Border Grid.RowSpan="5" Background="#D0111512" Visibility="{Binding Library.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="240">
+                            <TextBlock Text="Indexing STL library..." FontFamily="Georgia" FontSize="15" HorizontalAlignment="Center" />
+                            <ProgressBar Value="{Binding Library.ScanProgress}" Maximum="100" Height="6" Margin="0,12,0,0" Foreground="{StaticResource AccentBrush}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid x:Name="SceneDropSurface"
+                  Grid.Column="2"
+                  Background="#0D120F"
+                  AllowDrop="True"
+                  PreviewDragOver="TerrainViewportDragOver"
+                  PreviewDrop="TerrainViewportDrop">
+                <hx:Viewport3DX x:Name="TerrainViewport"
+                               EffectsManager="{Binding Scene.EffectsManager}"
+                               Camera="{Binding Scene.Camera}"
+                               BackgroundColor="#0D120F"
+                               ModelUpDirection="0,0,1"
+                               CameraMode="Inspect"
+                               AllowDrop="True"
+                               IsPanEnabled="True"
+                               IsRotationEnabled="True"
+                               IsZoomEnabled="True"
+                               ZoomSensitivity="0.3"
+                               RotateAroundMouseDownPoint="True"
+                               ZoomAroundMouseDownPoint="True"
+                               ShowCoordinateSystem="True"
+                               ShowViewCube="True"
+                               IsShadowMappingEnabled="False"
+                               MouseDown3D="ViewportMouseDown3D">
+                    <hx:PostEffectMeshOutlineBlur EffectName="selectionHighlight"
+                                                  Color="#DBAA59"
+                                                  ScaleX="1.5"
+                                                  ScaleY="1.5"
+                                                  NumberOfBlurPass="1" />
+                    <hx:AmbientLight3D Color="#666666" />
+                    <hx:DirectionalLight3D Color="#FFF0CE" Direction="-2,3,-5" />
+                    <hx:DirectionalLight3D Color="#809B91" Direction="3,-2,-1" />
+                    <hx:LineGeometryModel3D Geometry="{Binding Scene.GridGeometry}" Color="#566958" Thickness="0.7" IsHitTestVisible="False" />
+                    <hx:ItemsModel3D ItemsSource="{Binding Scene.Pieces}">
+                        <hx:ItemsModel3D.ItemTemplate>
+                            <DataTemplate>
+                                <hx:MeshGeometryModel3D Geometry="{Binding Geometry}"
+                                                        Material="{Binding Material}"
+                                                        Transform="{Binding Transform}"
+                                                        PostEffects="{Binding PostEffects}"
+                                                        IsThrowingShadow="False" />
+                            </DataTemplate>
+                        </hx:ItemsModel3D.ItemTemplate>
+                    </hx:ItemsModel3D>
+                </hx:Viewport3DX>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
+                    <Button Content="Frame Scene (F)" Command="{Binding Scene.FrameSceneCommand}" />
+                    <Button Content="Focus Selected" Command="{Binding Scene.FocusSelectedCommand}" ToolTip="Make the selected model the camera orbit pivot" />
+                    <Border Background="#E0171D18" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="9,7" Margin="5,3">
+                        <TextBlock Text="Add: drag from library  |  Move: left drag  |  Orbit: right drag  |  Pan: middle drag  |  Zoom: wheel" Foreground="{StaticResource MutedBrush}" FontSize="9" />
+                    </Border>
+                </StackPanel>
+
+                <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="#E0182019" BorderBrush="#705D37" BorderThickness="1" CornerRadius="8" Padding="25,18" IsHitTestVisible="False">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Scene.PieceCount}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="Build your terrain" FontFamily="Georgia" FontSize="21" HorizontalAlignment="Center" />
+                        <TextBlock Text="Double-click an STL or select one and press Add." Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <TabControl Background="Transparent" BorderThickness="0">
+                    <TabItem Header="Selection">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource PanelBrush}">
+                            <StackPanel Margin="14">
+                                <TextBlock Text="SELECTED PIECE" Foreground="{StaticResource AccentBrush}" FontSize="9" FontWeight="Bold" />
+                                <TextBlock Text="{Binding Scene.SelectedPiece.DisplayName, TargetNullValue=Nothing selected}" FontFamily="Georgia" FontSize="18" Margin="0,5,0,12" TextWrapping="Wrap" />
+
+                                <TextBlock Text="Position - mm" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,4" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding Scene.SelectedPiece.PositionX, UpdateSourceTrigger=LostFocus, StringFormat=0.##}" Margin="2" ToolTip="X position" />
+                                    <TextBox Grid.Column="1" Text="{Binding Scene.SelectedPiece.PositionY, UpdateSourceTrigger=LostFocus, StringFormat=0.##}" Margin="2" ToolTip="Y position" />
+                                    <TextBox Grid.Column="2" Text="{Binding Scene.SelectedPiece.PositionZ, UpdateSourceTrigger=LostFocus, StringFormat=0.##}" Margin="2" ToolTip="Z position" />
+                                </Grid>
+
+                                <CheckBox IsChecked="{Binding Scene.IsGridSnapEnabled}" Content="Enable grid snapping" Margin="3,11,3,2" />
+                                <Grid Margin="3,7,3,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="105" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Snap increment" FontSize="10" />
+                                        <TextBlock Text="{Binding Scene.GridSnapIncrementMm, StringFormat={}{0:0.##} mm}" Foreground="{StaticResource MutedBrush}" FontSize="9" />
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding Scene.GridSnapPercentOptions}"
+                                              SelectedItem="{Binding Scene.GridSnapPercentage}"
+                                              ToolTip="Percentage of the current grid size used as the snap interval">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding StringFormat={}{0}%}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+                                <TextBlock Text="Move by one grid square" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,10,0,4" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="84" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="38" />
+                                            <RowDefinition Height="38" />
+                                            <RowDefinition Height="38" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Row="0" Grid.Column="1" Content="Y +" Command="{Binding Scene.MoveForwardCommand}" />
+                                        <Button Grid.Row="1" Grid.Column="0" Content="X -" Command="{Binding Scene.MoveLeftCommand}" />
+                                        <Border Grid.Row="1" Grid.Column="1" Margin="5" Background="#121813" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4">
+                                            <TextBlock Text="XY" Foreground="{StaticResource MutedBrush}" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <Button Grid.Row="1" Grid.Column="2" Content="X +" Command="{Binding Scene.MoveRightCommand}" />
+                                        <Button Grid.Row="2" Grid.Column="1" Content="Y -" Command="{Binding Scene.MoveBackCommand}" />
+                                    </Grid>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
+                                        <Button Content="Z +" Command="{Binding Scene.MoveUpCommand}" Height="38" />
+                                        <Button Content="Z -" Command="{Binding Scene.MoveDownCommand}" Height="38" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Rotation - 90 degree snap" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,14,0,4" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="Anticlockwise" Command="{Binding Scene.RotateAnticlockwiseCommand}" />
+                                    <Button Grid.Column="1" Content="Clockwise" Command="{Binding Scene.RotateClockwiseCommand}" />
+                                </Grid>
+
+                                <TextBlock Text="Dimensions" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,15,0,4" />
+                                <TextBlock Text="{Binding Scene.SelectedPiece.Source.DimensionsDisplay, TargetNullValue=-}" FontSize="11" />
+                                <TextBlock Text="Source STL" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,15,0,4" />
+                                <TextBlock Text="{Binding Scene.SelectedPiece.Source.FullPath, TargetNullValue=-}" TextWrapping="Wrap" FontSize="9" />
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="Copy (Ctrl+C)" Command="{Binding Scene.CopySelectedCommand}" />
+                                    <Button Grid.Column="1" Content="Paste (Ctrl+V)" Command="{Binding Scene.PasteCommand}" />
+                                </Grid>
+                                <Button Content="Delete Selected (Delete)" Command="{Binding Scene.DeleteSelectedCommand}" Margin="0,5,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <TabItem Header="Print List">
+                        <Grid Margin="10" Background="{StaticResource PanelBrush}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding PrintList.TotalPieces, StringFormat=Total physical pieces: {0}}" FontFamily="Georgia" FontSize="15" Margin="4,5,4,7" />
+                            <Button Grid.Row="1"
+                                    Content="Export Required STL Files"
+                                    Command="{Binding ExportPrintStlsCommand}"
+                                    Margin="0,0,0,9"
+                                    ToolTip="Copy one of each required source STL into a new print-export folder" />
+                            <ListBox Grid.Row="2" ItemsSource="{Binding PrintList.Items}" Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#303830" BorderThickness="0,0,0,1" Padding="7,9">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding ModelName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Dimensions, StringFormat={}{0}}" Foreground="{StaticResource MutedBrush}" FontSize="9" />
+                                                    <TextBlock Text="{Binding SourceFolder}" Foreground="#778077" FontSize="8" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="12" Padding="9,4" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Quantity, StringFormat=x {0}}" Foreground="#1B160C" FontWeight="Bold" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
+            <GridSplitter Grid.Column="1"
+                          Width="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="#3A453C"
+                          ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Columns"
+                          ShowsPreview="True"
+                          Cursor="SizeWE" />
+            <GridSplitter Grid.Column="3"
+                          Width="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="#3A453C"
+                          ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Columns"
+                          ShowsPreview="True"
+                          Cursor="SizeWE" />
+        </Grid>
+
+        <Border Grid.Row="2" Background="#121713" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="11,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}" FontSize="9" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Scene.PieceCount, StringFormat=Tiles: {0}}" Margin="15,0" VerticalAlignment="Center" FontSize="9" />
+                <TextBlock Grid.Column="2" Text="{Binding GridDisplay}" Margin="15,0" VerticalAlignment="Center" FontSize="9" />
+                <TextBlock Grid.Column="3" Text="{Binding UnitDisplay}" Margin="15,0" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" FontSize="9" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+
+
+
+
+
+
+
+
