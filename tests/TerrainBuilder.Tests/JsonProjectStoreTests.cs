@@ -16,6 +16,9 @@ public sealed class JsonProjectStoreTests
             LibraryFolder = @"C:\Models",
             IsGridSnapEnabled = true,
             GridSnapPercentage = 50,
+            LayerHeightMm = 50,
+            ShowAllLayers = false,
+            ActiveLayerElevationMm = 76.2,
             Pieces =
             [
                 new PlacedTerrainPiece
@@ -35,8 +38,15 @@ public sealed class JsonProjectStoreTests
         Assert.Equal("Room One", loaded.Name);
         Assert.True(loaded.IsGridSnapEnabled);
         Assert.Equal(50, loaded.GridSnapPercentage);
+        Assert.Equal(50, loaded.LayerHeightMm);
+        Assert.False(loaded.ShowAllLayers);
+        Assert.Equal(76.2, loaded.ActiveLayerElevationMm);
         Assert.Single(loaded.Pieces);
         Assert.Equal(90, loaded.Pieces[0].RotationDegrees.Z);
     }
 }
+
+
+
+
 

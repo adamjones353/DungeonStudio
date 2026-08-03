@@ -115,6 +115,9 @@ public partial class MainWindowViewModel : ObservableObject
             GridSizeMm = Scene.GridSizeMm,
             IsGridSnapEnabled = Scene.IsGridSnapEnabled,
             GridSnapPercentage = Scene.GridSnapPercentage,
+            LayerHeightMm = Scene.LayerHeightMm,
+            ShowAllLayers = Scene.ShowAllLayers,
+            ActiveLayerElevationMm = Scene.ActiveLayerElevationMm,
             Pieces = Scene.Pieces.Select(piece => piece.ToModel()).ToArray()
         };
 
@@ -144,6 +147,7 @@ public partial class MainWindowViewModel : ObservableObject
                 }
 
                 Scene.Clear();
+                Scene.LayerHeightMm = project.LayerHeightMm;
                 Scene.GridSizeMm = project.GridSizeMm;
                 Scene.IsGridSnapEnabled = project.IsGridSnapEnabled;
                 Scene.GridSnapPercentage = project.GridSnapPercentage is 25 or 50 or 75 or 100
@@ -157,6 +161,7 @@ public partial class MainWindowViewModel : ObservableObject
                     if (!await Scene.RestorePieceAsync(placement, model)) missing++;
                 }
 
+                Scene.SetLayerView(project.ShowAllLayers, project.ActiveLayerElevationMm);
                 ProjectName = project.Name;
                 currentProjectPath = filePath;
                 IsDirty = false;
@@ -188,13 +193,25 @@ public partial class MainWindowViewModel : ObservableObject
                 PrintList.Items.ToArray(),
                 parentFolder,
                 ProjectName);
+            var packageStatus = result.ThreeMfFilePath is null
+                ? " No 3MF package could be created."
+                : $" Created a Creality Hi multi-plate project and {result.ThreeMfPlateFilePaths.Count:N0} portable plate file(s).";
+            if (result.OversizePlacementCount > 0)
+            {
+                packageStatus += $" Verify {result.OversizePlacementCount:N0} oversize piece(s) in the slicer.";
+            }
+            if (result.ThreeMfOmittedFiles.Count > 0)
+            {
+                packageStatus += $" {result.ThreeMfOmittedFiles.Count:N0} unreadable STL file(s) were omitted from the 3MF.";
+            }
+
             StatusMessage = result.MissingFiles.Count == 0
-                ? $"Exported {result.FilesCopied:N0} STL file(s) to {result.ExportFolder}."
-                : $"Exported {result.FilesCopied:N0} STL file(s) to {result.ExportFolder}; {result.MissingFiles.Count:N0} source file(s) were missing.";
+                ? $"Exported {result.FilesCopied:N0} STL file(s) to {result.ExportFolder}. Print quantities are in Print List.txt.{packageStatus}"
+                : $"Exported {result.FilesCopied:N0} STL file(s) to {result.ExportFolder}; {result.MissingFiles.Count:N0} source file(s) were missing. Print quantities are in Print List.txt.{packageStatus}";
         }
         catch (Exception exception)
         {
-            StatusMessage = $"Could not export STL files: {exception.Message}";
+            StatusMessage = $"Could not export the print package: {exception.Message}";
         }
         finally
         {
@@ -255,6 +272,12 @@ public partial class MainWindowViewModel : ObservableObject
         await RunBusyAsync(async () => { _ = await operation(); }, successMessage, errorPrefix);
     }
 }
+
+
+
+
+
+
 
 
 

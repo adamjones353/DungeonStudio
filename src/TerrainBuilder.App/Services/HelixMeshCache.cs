@@ -11,8 +11,8 @@ namespace TerrainBuilder.App.Services;
 
 public sealed class HelixMeshCache : IHelixMeshCache
 {
-    private const int ViewportTriangleLimit = 20_000;
-    private const int CacheVersion = 1;
+    private const int CacheVersion = 2;
+    private const int SimplificationAggressiveness = 5;
     private const uint CacheMagic = 0x444C4254; // TBLD
     private const int MaximumCachedVertices = 2_000_000;
     private const int MaximumCachedIndices = 6_000_000;
@@ -80,7 +80,9 @@ public sealed class HelixMeshCache : IHelixMeshCache
             fileInfo.FullName.ToUpperInvariant(),
             fileInfo.Length,
             fileInfo.LastWriteTimeUtc.Ticks,
-            ViewportTriangleLimit,
+            ViewportMeshDetailPolicy.MinimumTriangleBudget,
+            ViewportMeshDetailPolicy.MaximumTriangleBudget,
+            ViewportMeshDetailPolicy.RetainedTriangleRatio,
             CacheVersion);
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(keyText)));
         return Path.Combine(_cacheFolder, $"{key}.tbmesh");
@@ -246,19 +248,176 @@ public sealed class HelixMeshCache : IHelixMeshCache
             TriangleIndices = triangleIndices
         };
 
-        if (triangleIndices.Count / 3 > ViewportTriangleLimit)
+        var sourceTriangleCount = triangleIndices.Count / 3;
+        var targetTriangleCount = ViewportMeshDetailPolicy.GetTargetTriangleCount(sourceTriangleCount);
+        if (targetTriangleCount < sourceTriangleCount)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var simplifier = new MeshSimplification(viewportMesh);
-            viewportMesh = simplifier.Simplify(
-                ViewportTriangleLimit,
-                aggressive: 7,
-                verbose: false,
-                lossless: false);
+            var sourceStatistics = AnalyzeGeometry(viewportMesh, cancellationToken);
+            var simplified = TrySimplify(
+                viewportMesh,
+                targetTriangleCount,
+                sourceStatistics,
+                cancellationToken);
+
+            if (simplified is null)
+            {
+                var retryTarget = ViewportMeshDetailPolicy.GetSafetyRetryTriangleCount(
+                    sourceTriangleCount,
+                    targetTriangleCount);
+                if (retryTarget < sourceTriangleCount)
+                {
+                    simplified = TrySimplify(
+                        viewportMesh,
+                        retryTarget,
+                        sourceStatistics,
+                        cancellationToken);
+                }
+            }
+
+            if (simplified is not null) viewportMesh = simplified;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         viewportMesh.Normals = new Vector3Collection(viewportMesh.CalculateNormals());
         return viewportMesh.ToMeshGeometry3D();
     }
+
+    private static HelixToolkit.Geometry.MeshGeometry3D? TrySimplify(
+        HelixToolkit.Geometry.MeshGeometry3D source,
+        int targetTriangleCount,
+        MeshStatistics sourceStatistics,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var candidate = new MeshSimplification(source).Simplify(
+                targetTriangleCount,
+                aggressive: SimplificationAggressiveness,
+                verbose: false,
+                lossless: false);
+            var candidateStatistics = AnalyzeGeometry(candidate, cancellationToken);
+            return IsAcceptableSimplification(sourceStatistics, candidateStatistics)
+                ? candidate
+                : null;
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or ArgumentException or IndexOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    private static MeshStatistics AnalyzeGeometry(
+        HelixToolkit.Geometry.MeshGeometry3D geometry,
+        CancellationToken cancellationToken)
+    {
+        var positions = geometry.Positions;
+        var indices = geometry.TriangleIndices;
+        if (positions is null || indices is null || positions.Count == 0 || indices.Count < 3)
+        {
+            return MeshStatistics.Invalid;
+        }
+
+        var minimum = new Vector3(float.PositiveInfinity);
+        var maximum = new Vector3(float.NegativeInfinity);
+        foreach (var position in positions)
+        {
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(position.Z))
+            {
+                return MeshStatistics.Invalid;
+            }
+
+            minimum = Vector3.Min(minimum, position);
+            maximum = Vector3.Max(maximum, position);
+        }
+
+        double surfaceArea = 0;
+        double maximumEdgeLengthSquared = 0;
+        var validTriangles = 0;
+        for (var index = 0; index + 2 < indices.Count; index += 3)
+        {
+            if ((index & 0x3fff) == 0) cancellationToken.ThrowIfCancellationRequested();
+            var aIndex = indices[index];
+            var bIndex = indices[index + 1];
+            var cIndex = indices[index + 2];
+            if ((uint)aIndex >= (uint)positions.Count ||
+                (uint)bIndex >= (uint)positions.Count ||
+                (uint)cIndex >= (uint)positions.Count)
+            {
+                return MeshStatistics.Invalid;
+            }
+
+            var a = positions[aIndex];
+            var b = positions[bIndex];
+            var c = positions[cIndex];
+            var ab = b - a;
+            var ac = c - a;
+            var bc = c - b;
+            var doubledArea = Vector3.Cross(ab, ac).Length();
+            if (!float.IsFinite(doubledArea) || doubledArea <= float.Epsilon) continue;
+
+            surfaceArea += doubledArea * 0.5;
+            maximumEdgeLengthSquared = Math.Max(
+                maximumEdgeLengthSquared,
+                Math.Max(ab.LengthSquared(), Math.Max(ac.LengthSquared(), bc.LengthSquared())));
+            validTriangles++;
+        }
+
+        return new MeshStatistics(
+            true,
+            minimum,
+            maximum,
+            surfaceArea,
+            maximumEdgeLengthSquared,
+            validTriangles);
+    }
+
+    private static bool IsAcceptableSimplification(
+        MeshStatistics source,
+        MeshStatistics candidate)
+    {
+        if (!source.IsValid || !candidate.IsValid || candidate.ValidTriangleCount == 0) return false;
+
+        var extent = source.Maximum - source.Minimum;
+        var tolerance = Math.Max(0.1, Math.Max(extent.X, Math.Max(extent.Y, extent.Z)) * 0.02);
+        if (!BoundsMatch(source, candidate, tolerance)) return false;
+
+        var areaRatio = candidate.SurfaceArea / source.SurfaceArea;
+        if (!double.IsFinite(areaRatio) || areaRatio < 0.55 || areaRatio > 1.10) return false;
+
+        return candidate.MaximumEdgeLengthSquared <=
+               Math.Max(source.MaximumEdgeLengthSquared * 9, tolerance * tolerance);
+    }
+
+    private static bool BoundsMatch(
+        MeshStatistics source,
+        MeshStatistics candidate,
+        double tolerance) =>
+        Math.Abs(source.Minimum.X - candidate.Minimum.X) <= tolerance &&
+        Math.Abs(source.Minimum.Y - candidate.Minimum.Y) <= tolerance &&
+        Math.Abs(source.Minimum.Z - candidate.Minimum.Z) <= tolerance &&
+        Math.Abs(source.Maximum.X - candidate.Maximum.X) <= tolerance &&
+        Math.Abs(source.Maximum.Y - candidate.Maximum.Y) <= tolerance &&
+        Math.Abs(source.Maximum.Z - candidate.Maximum.Z) <= tolerance;
+
+    private readonly record struct MeshStatistics(
+        bool IsValid,
+        Vector3 Minimum,
+        Vector3 Maximum,
+        double SurfaceArea,
+        double MaximumEdgeLengthSquared,
+        int ValidTriangleCount)
+    {
+        public static MeshStatistics Invalid => new(
+            false,
+            Vector3.Zero,
+            Vector3.Zero,
+            0,
+            0,
+            0);
+    }
 }
+
+

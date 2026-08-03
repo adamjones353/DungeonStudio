@@ -18,7 +18,7 @@ public sealed class WindowsFileDialogService : IFileDialogService
     {
         var dialog = new OpenFolderDialog
         {
-            Title = $"Choose where to create the {projectName} STL export folder",
+            Title = $"Choose where to create the {projectName} print-export folder",
             Multiselect = false
         };
         return dialog.ShowDialog() == true ? dialog.FolderName : null;

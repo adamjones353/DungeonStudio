@@ -19,6 +19,7 @@ public partial class MainWindow
         selectedPieceHost = TerrainViewport.Items.OfType<ItemsModel3D>().FirstOrDefault();
         TerrainViewport.PreviewMouseLeftButtonDown += InstancedSceneMouseDown;
         ViewModel.Scene.SceneChanged += (_, _) => RefreshInstancedScene();
+        ViewModel.Scene.LayerFilterChanged += (_, _) => RefreshInstancedScene();
         ViewModel.Scene.PropertyChanged += ScenePropertyChanged;
         RefreshInstancedScene();
     }
@@ -35,7 +36,8 @@ public partial class MainWindow
     {
         if (selectedPieceHost is null) return;
 
-        selectedPieceHost.ItemsSource = ViewModel.Scene.SelectedPiece is { } selected
+        selectedPieceHost.ItemsSource = ViewModel.Scene.SelectedPiece is { } selected &&
+                                        ViewModel.Scene.IsPieceVisible(selected)
             ? new[] { selected }
             : Array.Empty<ScenePieceViewModel>();
 
@@ -47,7 +49,8 @@ public partial class MainWindow
         instancedSceneModels.Clear();
 
         var groups = ViewModel.Scene.Pieces
-            .Where(piece => !ReferenceEquals(piece, ViewModel.Scene.SelectedPiece))
+            .Where(piece => ViewModel.Scene.IsPieceVisible(piece) &&
+                            !ReferenceEquals(piece, ViewModel.Scene.SelectedPiece))
             .GroupBy(piece => piece.Source.FullPath, StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in groups)
@@ -128,3 +131,5 @@ public partial class MainWindow
         (float)matrix.M31, (float)matrix.M32, (float)matrix.M33, (float)matrix.M34,
         (float)matrix.OffsetX, (float)matrix.OffsetY, (float)matrix.OffsetZ, (float)matrix.M44);
 }
+
+

@@ -14,13 +14,14 @@ DungeonStudio is a native Windows desktop application for arranging modular tabl
 - Adds models by double-clicking, using the Add button, or dragging from the library into the viewport.
 - Provides an interactive HelixToolkit SharpDX viewport with orbit, middle-mouse pan, zoom, a view cube, and a visible one-inch grid.
 - Selects and highlights scene pieces, then supports mouse dragging, grid movement, rotation, deletion, copy, and paste-at-cursor.
+- Groups model base elevations into configurable floor levels (50 mm by default), supports vertical higher/current/lower navigation, and can render only the active level while retaining hidden pieces in the project and print list.
 - Enables or disables grid snapping with 25%, 50%, 75%, and 100% grid increments.
 - Saves and loads `.terrainproject` files that reference the original STL paths.
 - Saves subsequent changes directly to the loaded project file.
 - Builds a print list grouped by the original STL file.
-- Copies the required source STLs into a chosen print-export folder without modifying the originals.
+- Creates a Creality Hi multi-plate `Print Package.project.3mf`, portable numbered `.build.3mf` plate files, and a `Print List.txt` containing quantities and plate allocations. The automatic layout uses the Hi's 260 x 260 x 300 mm build volume with a 5 mm edge margin and never modifies the source STLs.
 - Reuses repeated geometry through instanced rendering.
-- Generates and caches reduced-detail viewport meshes for responsive large scenes; source and exported STLs retain their full detail.
+- Generates and caches adaptively reduced viewport meshes, retaining a consistent proportion of each STL and rejecting structurally unsafe simplifications; source and exported STLs always retain their full detail.
 - Runs entirely on the local computer with no accounts, cloud services, uploads, telemetry, or data collection.
 
 ## Screenshot
@@ -93,15 +94,16 @@ The generated `artifacts` directory is intentionally excluded from source contro
 | `Ctrl+C` / `Ctrl+V` | Copy / paste at the viewport cursor |
 | `Ctrl+S` | Save the project |
 | `Ctrl+O` | Open a project |
-| `F` | Frame the scene |
+| `F` | Focus the selected model and set the camera orbit pivot |
+| `Ctrl+F` | Frame the entire scene |
 
 ## Project structure
 
-- `TerrainBuilder.App` — WPF user interface, MVVM view models, HelixToolkit scene integration, dialogs, and local rendering caches.
-- `TerrainBuilder.Core` — domain models, service contracts, grid snapping, and print-list logic with no WPF dependency.
-- `TerrainBuilder.Infrastructure` — STL parsing, JSON library indexing, settings, project persistence, and print export.
-- `TerrainBuilder.Tests` — automated tests for non-UI behavior.
-- `tools/LodProbe` — a small diagnostic utility for measuring viewport mesh generation and cache loading.
+- `TerrainBuilder.App` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â WPF user interface, MVVM view models, HelixToolkit scene integration, dialogs, and local rendering caches.
+- `TerrainBuilder.Core` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â domain models, service contracts, grid snapping, and print-list logic with no WPF dependency.
+- `TerrainBuilder.Infrastructure` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â STL parsing, JSON library indexing, settings, project persistence, and print export.
+- `TerrainBuilder.Tests` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â automated tests for non-UI behavior.
+- `tools/LodProbe` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a small diagnostic utility for measuring viewport mesh generation and cache loading.
 
 ## Main dependencies
 
@@ -128,6 +130,7 @@ Project files contain references to the original STL paths rather than embedded 
 - One library root can currently be active at a time.
 - Viewport meshes are simplified for performance, so very detailed models can look noticeably rough in the scene. Source files and print exports are unaffected.
 - Multi-selection, undo/redo, collision detection, measurements, layers, grouping, and combined STL/OBJ scene export are not yet implemented.
+- Automatic print-plate arrangement uses simple rectangular model bounds and a 5 mm gap. Always inspect each generated plate in your slicer before printing.
 - The application and project format are still evolving.
 
 ## Contributing
@@ -141,4 +144,12 @@ Do not commit STL libraries, saved terrain projects, generated thumbnails, local
 DungeonStudio is available under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, study, modify, and redistribute the software for permitted noncommercial purposes, but commercial use and selling the software are not permitted by that licence.
 
 Because commercial use is restricted, this is a **source-available noncommercial project**, not an OSI-approved open-source project. This distinction does not affect the goal: the program and its source remain freely available for personal, hobby, educational, charitable, and other permitted noncommercial use.
+
+
+
+
+
+
+
+
 

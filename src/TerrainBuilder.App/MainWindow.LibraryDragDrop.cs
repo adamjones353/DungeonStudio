@@ -55,9 +55,10 @@ public partial class MainWindow
             string.Equals(item.FullPath, modelPath, StringComparison.OrdinalIgnoreCase));
         if (model is null) return;
 
+        var placementElevation = ViewModel.Scene.PlacementElevationMm;
         var worldPoint = TerrainViewport.UnProjectOnPlane(
             e.GetPosition(TerrainViewport),
-            new Point3D(0, 0, 0),
+            new Point3D(0, 0, placementElevation),
             new Vector3D(0, 0, 1));
         if (worldPoint is null) return;
 
@@ -73,7 +74,10 @@ public partial class MainWindow
                 return;
             }
 
-            ViewModel.Scene.MoveSelectedTo(worldPoint.Value.X, worldPoint.Value.Y, 0);
+            ViewModel.Scene.MoveSelectedTo(
+                worldPoint.Value.X,
+                worldPoint.Value.Y,
+                placementElevation);
             ViewModel.StatusMessage = ViewModel.Scene.IsGridSnapEnabled
                 ? $"Placed {model.DisplayName} at the nearest snap point."
                 : $"Placed {model.DisplayName}.";
@@ -101,4 +105,6 @@ public partial class MainWindow
         return null;
     }
 }
+
+
 

@@ -33,6 +33,7 @@ public partial class SceneViewModel : ObservableObject
             FarPlaneDistance = 10000
         };
         GridGeometry = CreateGridGeometry(25.4, 20);
+        InitializeLayerFiltering();
     }
 
     public ObservableCollection<ScenePieceViewModel> Pieces { get; } = [];
@@ -79,12 +80,14 @@ public partial class SceneViewModel : ObservableObject
                 var column = Pieces.Count % 8;
                 var row = Pieces.Count / 8;
                 var snapped = _gridSnapService.Snap(
-                    new TerrainVector3(column * GridSizeMm, row * GridSizeMm, 0),
+                    new TerrainVector3(column * GridSizeMm, row * GridSizeMm, PlacementElevationMm),
                     GridSizeMm);
                 piece.PositionX = snapped.X;
                 piece.PositionY = snapped.Y;
+                piece.PositionZ = PlacementElevationMm;
             }
 
+            TrackPieceForLayers(piece);
             Pieces.Add(piece);
             Select(piece);
             NotifySceneChanged();
@@ -128,6 +131,7 @@ public partial class SceneViewModel : ObservableObject
 
     public void Clear()
     {
+        foreach (var piece in Pieces) UntrackPieceForLayers(piece);
         Pieces.Clear();
         Select(null);
         NotifySceneChanged();
@@ -137,6 +141,7 @@ public partial class SceneViewModel : ObservableObject
     private void DeleteSelected()
     {
         if (SelectedPiece is null) return;
+        UntrackPieceForLayers(SelectedPiece);
         Pieces.Remove(SelectedPiece);
         Select(null);
         NotifySceneChanged();
@@ -199,6 +204,7 @@ public partial class SceneViewModel : ObservableObject
     private void NotifySceneChanged()
     {
         OnPropertyChanged(nameof(PieceCount));
+        RefreshLayerDefinitions();
         SceneChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -226,6 +232,8 @@ public partial class SceneViewModel : ObservableObject
         indices.Add(offset + 1);
     }
 }
+
+
 
 
 

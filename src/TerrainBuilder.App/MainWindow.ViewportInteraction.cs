@@ -115,6 +115,27 @@ public partial class MainWindow
 
     private void MainWindowOnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                ViewModel.Scene.FrameSceneCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
+            if (Keyboard.Modifiers == ModifierKeys.None)
+            {
+                if (ViewModel.Scene.FocusSelectedCommand.CanExecute(null))
+                {
+                    ViewModel.Scene.FocusSelectedCommand.Execute(null);
+                }
+
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.Key == Key.V &&
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
             TerrainViewport.IsMouseOver)
@@ -221,3 +242,5 @@ public partial class MainWindow
         }
     }
 }
+
+

@@ -18,7 +18,6 @@
         <KeyBinding Key="Delete" Command="{Binding Scene.DeleteSelectedCommand}" />
         <KeyBinding Key="C" Modifiers="Control" Command="{Binding Scene.CopySelectedCommand}" />
         <KeyBinding Key="V" Modifiers="Control" Command="{Binding Scene.PasteCommand}" />
-        <KeyBinding Key="F" Command="{Binding Scene.FrameSceneCommand}" />
         <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveProjectCommand}" />
         <KeyBinding Key="O" Modifiers="Control" Command="{Binding LoadProjectCommand}" />
     </Window.InputBindings>
@@ -264,11 +263,94 @@
                     </hx:ItemsModel3D>
                 </hx:Viewport3DX>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
-                    <Button Content="Frame Scene (F)" Command="{Binding Scene.FrameSceneCommand}" />
-                    <Button Content="Focus Selected" Command="{Binding Scene.FocusSelectedCommand}" ToolTip="Make the selected model the camera orbit pivot" />
-                    <Border Background="#E0171D18" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="9,7" Margin="5,3">
-                        <TextBlock Text="Add: drag from library  |  Move: left drag  |  Orbit: right drag  |  Pan: middle drag  |  Zoom: wheel" Foreground="{StaticResource MutedBrush}" FontSize="9" />
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Frame Scene (F)" Command="{Binding Scene.FrameSceneCommand}" />
+                        <Button Content="Focus Selected" Command="{Binding Scene.FocusSelectedCommand}" ToolTip="Make the selected model the camera orbit pivot" />
+                        <Border Background="#E0171D18" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="9,7" Margin="5,3">
+                            <TextBlock Text="Add: drag from library  |  Move: left drag  |  Orbit: right drag  |  Pan: middle drag  |  Zoom: wheel" Foreground="{StaticResource MutedBrush}" FontSize="9" />
+                        </Border>
+                    </StackPanel>
+
+                    <Border Background="#F0182019"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            Padding="4"
+                            Margin="3,5,0,0"
+                            Width="72"
+                            MinHeight="260"
+                            HorizontalAlignment="Left">
+                        <StackPanel>
+                            <TextBlock Text="LEVELS"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="Bold"
+                                       FontSize="7"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,1,0,2" />
+                            <Button Content="Higher"
+                                    Command="{Binding Scene.NextLayerCommand}"
+                                    Padding="4,6"
+                                    Margin="1"
+                                    FontSize="9"
+                                    ToolTip="Show the occupied level above" />
+                            <Border Background="#111713"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="3,6"
+                                    Margin="1,2">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Scene.ActiveLayer.ShortName, TargetNullValue=Ground}"
+                                               FontWeight="SemiBold"
+                                               FontSize="9"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Scene.ActiveLayer.ElevationDisplay, TargetNullValue=0 mm}"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="7"
+                                               TextAlignment="Center"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Button Content="Lower"
+                                    Command="{Binding Scene.PreviousLayerCommand}"
+                                    Padding="4,6"
+                                    Margin="1"
+                                    FontSize="9"
+                                    ToolTip="Show the occupied level below" />
+                            <Border Height="1"
+                                    Background="{StaticResource BorderBrush}"
+                                    Margin="3,8,3,7" />
+                            <CheckBox Content="Show all"
+                                      IsChecked="{Binding Scene.ShowAllLayers}"
+                                      HorizontalAlignment="Center"
+                                      FontSize="8"
+                                      Margin="0,0,0,8"
+                                      ToolTip="Show models from every floor level" />
+                            <TextBlock Text="FLOOR"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="Bold"
+                                       FontSize="7"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding Scene.LayerHeightMm, StringFormat={}{0:0.#} mm}"
+                                       FontSize="8"
+                                       TextAlignment="Center"
+                                       Margin="0,3,0,2" />
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center">
+                                <Button Content="-"
+                                        Command="{Binding Scene.DecreaseLayerHeightCommand}"
+                                        Padding="7,3"
+                                        Margin="1"
+                                        ToolTip="Reduce floor height by 5 mm" />
+                                <Button Content="+"
+                                        Command="{Binding Scene.IncreaseLayerHeightCommand}"
+                                        Padding="7,3"
+                                        Margin="1"
+                                        ToolTip="Increase floor height by 5 mm" />
+                            </StackPanel>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
 
@@ -309,6 +391,46 @@
                                     <TextBox Grid.Column="1" Text="{Binding Scene.SelectedPiece.PositionY, UpdateSourceTrigger=LostFocus, StringFormat=0.##}" Margin="2" ToolTip="Y position" />
                                     <TextBox Grid.Column="2" Text="{Binding Scene.SelectedPiece.PositionZ, UpdateSourceTrigger=LostFocus, StringFormat=0.##}" Margin="2" ToolTip="Z position" />
                                 </Grid>
+
+                                <Border BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8"
+                                        Margin="2,12,2,4">
+                                    <StackPanel>
+                                        <TextBlock Text="SCENE LEVELS"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   FontWeight="Bold"
+                                                   FontSize="8"
+                                                   Margin="2,0,2,6" />
+                                        <CheckBox Content="Show all levels"
+                                                  IsChecked="{Binding Scene.ShowAllLayers}"
+                                                  Margin="2,0,2,6" />
+                                        <Button Content="Only selected level"
+                                                Command="{Binding Scene.ShowSelectedLayerCommand}"
+                                                Padding="8,5"
+                                                Margin="0,0,0,6"
+                                                ToolTip="Hide every level except the one containing the selected model" />
+                                        <Grid Margin="2,0,2,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="90" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Floor height - mm"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       FontSize="9"
+                                                       VerticalAlignment="Center" />
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Scene.LayerHeightMm, UpdateSourceTrigger=LostFocus, StringFormat=0.##}"
+                                                     ToolTip="Height of one floor in millimetres; default is 50 mm" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding Scene.LayerStatus}"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   FontSize="9"
+                                                   Margin="2,0"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
 
                                 <CheckBox IsChecked="{Binding Scene.IsGridSnapEnabled}" Content="Enable grid snapping" Margin="3,11,3,2" />
                                 <Grid Margin="3,7,3,2">
@@ -401,10 +523,10 @@
                             </Grid.RowDefinitions>
                             <TextBlock Text="{Binding PrintList.TotalPieces, StringFormat=Total physical pieces: {0}}" FontFamily="Georgia" FontSize="15" Margin="4,5,4,7" />
                             <Button Grid.Row="1"
-                                    Content="Export Required STL Files"
+                                    Content="Export Print Package"
                                     Command="{Binding ExportPrintStlsCommand}"
                                     Margin="0,0,0,9"
-                                    ToolTip="Copy one of each required source STL into a new print-export folder" />
+                                    ToolTip="Create a slicer-ready 3MF, quantity list, and copies of the source STL files" />
                             <ListBox Grid.Row="2" ItemsSource="{Binding PrintList.Items}" Background="Transparent" BorderThickness="0">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
@@ -468,6 +590,20 @@
         </Border>
     </Grid>
 </Window>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
