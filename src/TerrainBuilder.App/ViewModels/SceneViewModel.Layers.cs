@@ -33,7 +33,7 @@ public partial class SceneViewModel
     public bool IsPieceVisible(ScenePieceViewModel piece) =>
         ShowAllLayers ||
         ActiveLayer is null ||
-        SceneLayerCalculator.GetLayerElevation(piece.PositionZ, LayerHeightMm) == ActiveLayer.ElevationMm;
+        GetPieceLevelElevation(piece) == ActiveLayer.ElevationMm;
 
     public void SetLayerView(bool showAll, double elevationMm)
     {
@@ -56,14 +56,15 @@ public partial class SceneViewModel
 
     private void PieceLayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(ScenePieceViewModel.PositionZ) ||
+        if (e.PropertyName is not nameof(ScenePieceViewModel.PositionZ) and
+            not nameof(ScenePieceViewModel.PlacementBaseElevation) ||
             sender is not ScenePieceViewModel piece)
         {
             return;
         }
 
         var preferredElevation = !ShowAllLayers && ReferenceEquals(piece, SelectedPiece)
-            ? SceneLayerCalculator.GetLayerElevation(piece.PositionZ, LayerHeightMm)
+            ? GetPieceLevelElevation(piece)
             : ActiveLayerElevationMm;
         RefreshLayerDefinitions(preferredElevation);
     }
@@ -74,7 +75,7 @@ public partial class SceneViewModel
             preferredElevation ?? ActiveLayer?.ElevationMm ?? 0,
             LayerHeightMm);
         var definitions = Pieces
-            .GroupBy(piece => SceneLayerCalculator.GetLayerElevation(piece.PositionZ, LayerHeightMm))
+            .GroupBy(GetPieceLevelElevation)
             .OrderBy(group => group.Key)
             .Select(group => new SceneLayerViewModel(
                 SceneLayerCalculator.GetLevelNumber(group.Key, LayerHeightMm),
@@ -132,7 +133,7 @@ public partial class SceneViewModel
     {
         ShowSelectedLayerCommand.NotifyCanExecuteChanged();
         if (value is null || !ShowAllLayers) return;
-        var elevation = SceneLayerCalculator.GetLayerElevation(value.PositionZ, LayerHeightMm);
+        var elevation = GetPieceLevelElevation(value);
         ActiveLayer = Layers.FirstOrDefault(layer => layer.ElevationMm == elevation) ?? ActiveLayer;
     }
 
@@ -166,7 +167,7 @@ public partial class SceneViewModel
     private void ShowSelectedLayer()
     {
         if (SelectedPiece is null) return;
-        var elevation = SceneLayerCalculator.GetLayerElevation(SelectedPiece.PositionZ, LayerHeightMm);
+        var elevation = GetPieceLevelElevation(SelectedPiece);
         ActiveLayer = Layers.FirstOrDefault(layer => layer.ElevationMm == elevation) ?? ActiveLayer;
         ShowAllLayers = false;
     }
@@ -191,6 +192,8 @@ public partial class SceneViewModel
         NextLayerCommand.NotifyCanExecuteChanged();
         LayerFilterChanged?.Invoke(this, EventArgs.Empty);
     }
-}
 
+    private double GetPieceLevelElevation(ScenePieceViewModel piece) =>
+        SceneLayerCalculator.GetLayerElevation(piece.PlacementBaseElevation, LayerHeightMm);
+}
 

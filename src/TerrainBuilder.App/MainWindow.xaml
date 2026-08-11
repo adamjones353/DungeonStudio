@@ -71,6 +71,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -106,7 +107,31 @@
                         </TextBlock>
                     </Grid>
 
-                    <TreeView Grid.Row="3"
+                    <Border Grid.Row="3"
+                            Margin="11,0,11,8"
+                            Padding="9,7"
+                            Background="{StaticResource RaisedBrush}"
+                            CornerRadius="4"
+                            Visibility="{Binding Library.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock Text="Indexing library..." FontSize="10" FontWeight="SemiBold" />
+                                <TextBlock DockPanel.Dock="Right"
+                                           Text="{Binding Library.ScanProgress, StringFormat={}{0}%}"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           FontSize="9" />
+                            </DockPanel>
+                            <ProgressBar Value="{Binding Library.ScanProgress}" Maximum="100" Height="5" Margin="0,5,0,0" Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="{Binding Library.CurrentIndexedFile, TargetNullValue=Discovering STL files...}"
+                                       ToolTip="{Binding Library.CurrentIndexedFile}"
+                                       Foreground="{StaticResource MutedBrush}"
+                                       FontSize="9"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <TreeView Grid.Row="4"
                               ItemsSource="{Binding Library.RootNodes}"
                               PreviewMouseLeftButtonDown="LibraryTreePreviewMouseLeftButtonDown"
                               PreviewMouseMove="LibraryTreePreviewMouseMove"
@@ -200,7 +225,7 @@
                         </TreeView.Resources>
                     </TreeView>
 
-                    <Grid Grid.Row="4" Margin="10">
+                    <Grid Grid.Row="5" Margin="10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition />
                             <ColumnDefinition Width="Auto" />
@@ -209,12 +234,6 @@
                         <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshLibraryCommand}" />
                     </Grid>
 
-                    <Border Grid.RowSpan="5" Background="#D0111512" Visibility="{Binding Library.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="240">
-                            <TextBlock Text="Indexing STL library..." FontFamily="Georgia" FontSize="15" HorizontalAlignment="Center" />
-                            <ProgressBar Value="{Binding Library.ScanProgress}" Maximum="100" Height="6" Margin="0,12,0,0" Foreground="{StaticResource AccentBrush}" />
-                        </StackPanel>
-                    </Border>
                 </Grid>
             </Border>
 
@@ -239,8 +258,7 @@
                                ZoomAroundMouseDownPoint="True"
                                ShowCoordinateSystem="True"
                                ShowViewCube="True"
-                               IsShadowMappingEnabled="False"
-                               MouseDown3D="ViewportMouseDown3D">
+                               IsShadowMappingEnabled="False">
                     <hx:PostEffectMeshOutlineBlur EffectName="selectionHighlight"
                                                   Color="#DBAA59"
                                                   ScaleX="1.5"
@@ -433,26 +451,11 @@
                                 </Border>
 
                                 <CheckBox IsChecked="{Binding Scene.IsGridSnapEnabled}" Content="Enable grid snapping" Margin="3,11,3,2" />
-                                <Grid Margin="3,7,3,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="105" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Snap increment" FontSize="10" />
-                                        <TextBlock Text="{Binding Scene.GridSnapIncrementMm, StringFormat={}{0:0.##} mm}" Foreground="{StaticResource MutedBrush}" FontSize="9" />
-                                    </StackPanel>
-                                    <ComboBox Grid.Column="1"
-                                              ItemsSource="{Binding Scene.GridSnapPercentOptions}"
-                                              SelectedItem="{Binding Scene.GridSnapPercentage}"
-                                              ToolTip="Percentage of the current grid size used as the snap interval">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding StringFormat={}{0}%}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                </Grid>
+                                <TextBlock Text="Hold Ctrl while dragging for 25% grid snapping."
+                                           Foreground="{StaticResource MutedBrush}"
+                                           FontSize="9"
+                                           Margin="3,3,3,2"
+                                           TextWrapping="Wrap" />
                                 <TextBlock Text="Move by one grid square" Foreground="{StaticResource MutedBrush}" FontSize="9" Margin="0,10,0,4" />
 
                                 <Grid>
@@ -590,10 +593,6 @@
         </Border>
     </Grid>
 </Window>
-
-
-
-
 
 
 

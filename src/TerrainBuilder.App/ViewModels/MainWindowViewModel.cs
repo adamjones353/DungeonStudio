@@ -114,7 +114,6 @@ public partial class MainWindowViewModel : ObservableObject
             LibraryFolder = Library.RootFolder,
             GridSizeMm = Scene.GridSizeMm,
             IsGridSnapEnabled = Scene.IsGridSnapEnabled,
-            GridSnapPercentage = Scene.GridSnapPercentage,
             LayerHeightMm = Scene.LayerHeightMm,
             ShowAllLayers = Scene.ShowAllLayers,
             ActiveLayerElevationMm = Scene.ActiveLayerElevationMm,
@@ -150,9 +149,6 @@ public partial class MainWindowViewModel : ObservableObject
                 Scene.LayerHeightMm = project.LayerHeightMm;
                 Scene.GridSizeMm = project.GridSizeMm;
                 Scene.IsGridSnapEnabled = project.IsGridSnapEnabled;
-                Scene.GridSnapPercentage = project.GridSnapPercentage is 25 or 50 or 75 or 100
-                    ? project.GridSnapPercentage
-                    : 100;
                 var models = Library.Models.ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
                 var missing = 0;
                 foreach (var placement in project.Pieces)
@@ -272,7 +268,6 @@ public partial class MainWindowViewModel : ObservableObject
         await RunBusyAsync(async () => { _ = await operation(); }, successMessage, errorPrefix);
     }
 }
-
 
 
 

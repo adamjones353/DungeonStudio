@@ -13,6 +13,7 @@ public partial class MainWindow
     private double dragOffsetX;
     private double dragOffsetY;
     private double dragPlaneZ;
+    private double dragBaseElevationZ;
     private bool pieceDragChanged;
     private bool isCameraPanning;
     private Point previousPanPoint;
@@ -29,7 +30,6 @@ public partial class MainWindow
         TerrainViewport.InfiniteSpin = false;
         TerrainViewport.SpinReleaseTime = 0;
         TerrainViewport.MSAA = MSAALevel.Disable;
-        TerrainViewport.PreviewMouseLeftButtonDown += TerrainViewportOnLeftButtonDown;
         TerrainViewport.PreviewMouseMove += TerrainViewportOnMouseMove;
         TerrainViewport.PreviewMouseLeftButtonUp += TerrainViewportOnLeftButtonUp;
         TerrainViewport.PreviewMouseDown += TerrainViewportOnMiddleButtonDown;
@@ -38,36 +38,6 @@ public partial class MainWindow
         TerrainViewport.LostMouseCapture += TerrainViewportOnLostMouseCapture;
         PreviewKeyDown += MainWindowOnPreviewKeyDown;
         PreviewKeyUp += MainWindowOnPreviewKeyUp;
-    }
-
-    private void TerrainViewportOnLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        var mousePoint = e.GetPosition(TerrainViewport);
-        UpdateMousePastePosition(mousePoint);
-        var hit = TerrainViewport.FindHits(mousePoint)
-            .FirstOrDefault(result => result.ModelHit is Element3D element &&
-                                      element.DataContext is ScenePieceViewModel);
-
-        if (hit?.ModelHit is not Element3D hitElement ||
-            hitElement.DataContext is not ScenePieceViewModel piece)
-        {
-            return;
-        }
-
-        var worldPoint = TerrainViewport.UnProjectOnPlane(
-            mousePoint,
-            new Point3D(0, 0, piece.PositionZ),
-            new Vector3D(0, 0, 1));
-        if (worldPoint is null) return;
-
-        ViewModel.Scene.Select(piece);
-        draggedPiece = piece;
-        pieceDragChanged = false;
-        dragPlaneZ = piece.PositionZ;
-        dragOffsetX = piece.PositionX - worldPoint.Value.X;
-        dragOffsetY = piece.PositionY - worldPoint.Value.Y;
-        TerrainViewport.CaptureMouse();
-        e.Handled = true;
     }
 
     private void TerrainViewportOnMouseMove(object sender, MouseEventArgs e)
@@ -98,7 +68,8 @@ public partial class MainWindow
             ViewModel.Scene.MoveSelectedTo(
                 worldPoint.Value.X + dragOffsetX,
                 worldPoint.Value.Y + dragOffsetY,
-                dragPlaneZ,
+                dragBaseElevationZ,
+                usePrecisionSnap: Keyboard.Modifiers.HasFlag(ModifierKeys.Control),
                 commitSceneChange: false);
             pieceDragChanged = true;
             e.Handled = true;
@@ -242,5 +213,3 @@ public partial class MainWindow
         }
     }
 }
-
-

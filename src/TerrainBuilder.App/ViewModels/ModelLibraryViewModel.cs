@@ -10,6 +10,9 @@ public partial class ModelLibraryViewModel : ObservableObject
 {
     private readonly ILibraryIndexService _indexService;
     private readonly IThumbnailService _thumbnailService;
+    private readonly HashSet<string> _indexedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LibraryTreeNodeViewModel> _foldersByPath = new(StringComparer.OrdinalIgnoreCase);
+    private LibraryTreeNodeViewModel? _treeRoot;
 
     public ModelLibraryViewModel(ILibraryIndexService indexService, IThumbnailService thumbnailService)
     {
@@ -38,6 +41,9 @@ public partial class ModelLibraryViewModel : ObservableObject
     [ObservableProperty]
     private int scanProgress;
 
+    [ObservableProperty]
+    private string? currentIndexedFile;
+
     public int VisibleModelCount => FilteredModels().Count();
 
     partial void OnSearchTextChanged(string value) => RebuildTree();
@@ -49,34 +55,53 @@ public partial class ModelLibraryViewModel : ObservableObject
 
     public async Task LoadFolderAsync(string folderPath, CancellationToken cancellationToken = default)
     {
+        var fullPath = Path.GetFullPath(folderPath);
+        RootFolder = fullPath;
+        Models.Clear();
+        _indexedPaths.Clear();
+        RebuildTree();
         IsScanning = true;
         ScanProgress = 0;
+        CurrentIndexedFile = null;
         try
         {
-            var progress = new Progress<int>(value => ScanProgress = value);
-            var models = await _indexService.ScanAsync(folderPath, progress, cancellationToken);
-            Models.Clear();
-            foreach (var model in models) Models.Add(model);
-            RootFolder = Path.GetFullPath(folderPath);
+            var progress = new Progress<LibraryScanProgress>(value =>
+            {
+                ScanProgress = value.Percentage;
+                CurrentIndexedFile = value.CurrentFilePath is null
+                    ? null
+                    : Path.GetRelativePath(fullPath, value.CurrentFilePath);
+                if (value.CompletedItems is { Count: > 0 })
+                {
+                    AddIndexedModels(value.CompletedItems);
+                }
+            });
+            var models = await _indexService.ScanAsync(fullPath, progress, cancellationToken);
+            AddIndexedModels(models);
             RebuildTree();
         }
         finally
         {
             IsScanning = false;
+            CurrentIndexedFile = null;
         }
     }
 
-    private IEnumerable<ModelLibraryItem> FilteredModels()
-    {
-        if (string.IsNullOrWhiteSpace(SearchText)) return Models;
-        return Models.Where(model =>
-            model.FileName.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase) ||
-            model.FolderPath.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase));
-    }
+    private IEnumerable<ModelLibraryItem> FilteredModels() =>
+        string.IsNullOrWhiteSpace(SearchText)
+            ? Models
+            : Models.Where(MatchesSearch);
+
+    private bool MatchesSearch(ModelLibraryItem model) =>
+        string.IsNullOrWhiteSpace(SearchText) ||
+        model.FileName.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase) ||
+        model.FolderPath.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase);
 
     private void RebuildTree()
     {
         RootNodes.Clear();
+        _foldersByPath.Clear();
+        _treeRoot = null;
         if (RootFolder is null)
         {
             OnPropertyChanged(nameof(VisibleModelCount));
@@ -84,40 +109,61 @@ public partial class ModelLibraryViewModel : ObservableObject
         }
 
         var rootName = new DirectoryInfo(RootFolder).Name;
-        var root = LibraryTreeNodeViewModel.Folder(
-            string.IsNullOrWhiteSpace(SearchText) ? rootName : $"Search results for “{SearchText}”",
+        _treeRoot = LibraryTreeNodeViewModel.Folder(
+            string.IsNullOrWhiteSpace(SearchText) ? rootName : $"Search results for \"{SearchText}\"",
             RootFolder);
-        root.IsExpanded = true;
+        _treeRoot.IsExpanded = true;
+        _foldersByPath[RootFolder] = _treeRoot;
 
         foreach (var model in FilteredModels().OrderBy(item => item.FullPath, StringComparer.CurrentCultureIgnoreCase))
         {
-            var parent = root;
-            if (string.IsNullOrWhiteSpace(SearchText))
-            {
-                var relativeFolder = Path.GetRelativePath(RootFolder, model.FolderPath);
-                if (relativeFolder != ".")
-                {
-                    var currentPath = RootFolder;
-                    foreach (var segment in relativeFolder.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-                    {
-                        currentPath = Path.Combine(currentPath, segment);
-                        var child = parent.Children.FirstOrDefault(node =>
-                            node.IsFolder && string.Equals(node.Name, segment, StringComparison.CurrentCultureIgnoreCase));
-                        if (child is null)
-                        {
-                            child = LibraryTreeNodeViewModel.Folder(segment, currentPath);
-                            parent.Children.Add(child);
-                        }
-                        parent = child;
-                    }
-                }
-            }
-            parent.Children.Add(LibraryTreeNodeViewModel.ModelNode(model, _thumbnailService));
+            AddModelToTree(model);
         }
 
-        SortChildren(root);
-        RootNodes.Add(root);
+        SortChildren(_treeRoot);
+        RootNodes.Add(_treeRoot);
         OnPropertyChanged(nameof(VisibleModelCount));
+    }
+
+    private void AddIndexedModels(IEnumerable<ModelLibraryItem> models)
+    {
+        var added = false;
+        foreach (var model in models)
+        {
+            if (!_indexedPaths.Add(model.FullPath)) continue;
+            Models.Add(model);
+            if (MatchesSearch(model)) AddModelToTree(model);
+            added = true;
+        }
+
+        if (added) OnPropertyChanged(nameof(VisibleModelCount));
+    }
+
+    private void AddModelToTree(ModelLibraryItem model)
+    {
+        if (_treeRoot is null || RootFolder is null) return;
+        var parent = _treeRoot;
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            var relativeFolder = Path.GetRelativePath(RootFolder, model.FolderPath);
+            if (relativeFolder != ".")
+            {
+                var currentPath = RootFolder;
+                foreach (var segment in relativeFolder.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                {
+                    currentPath = Path.Combine(currentPath, segment);
+                    if (!_foldersByPath.TryGetValue(currentPath, out var child))
+                    {
+                        child = LibraryTreeNodeViewModel.Folder(segment, currentPath);
+                        parent.Children.Add(child);
+                        _foldersByPath.Add(currentPath, child);
+                    }
+                    parent = child;
+                }
+            }
+        }
+
+        parent.Children.Add(LibraryTreeNodeViewModel.ModelNode(model, _thumbnailService));
     }
 
     private static void SortChildren(LibraryTreeNodeViewModel node)

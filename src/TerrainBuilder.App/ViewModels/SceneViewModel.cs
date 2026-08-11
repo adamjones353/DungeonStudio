@@ -67,7 +67,8 @@ public partial class SceneViewModel : ObservableObject
     public async Task<ScenePieceViewModel?> AddModelAsync(
         ModelLibraryItem model,
         PlacedTerrainPiece? placement = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool resolveStacking = true)
     {
         if (!model.IsValid) return null;
         IsLoading = true;
@@ -79,12 +80,31 @@ public partial class SceneViewModel : ObservableObject
             {
                 var column = Pieces.Count % 8;
                 var row = Pieces.Count / 8;
-                var snapped = _gridSnapService.Snap(
-                    new TerrainVector3(column * GridSizeMm, row * GridSizeMm, PlacementElevationMm),
-                    GridSizeMm);
-                piece.PositionX = snapped.X;
-                piece.PositionY = snapped.Y;
+                piece.PositionX = column * GridSizeMm;
+                piece.PositionY = row * GridSizeMm;
                 piece.PositionZ = PlacementElevationMm;
+                piece.PlacementBaseElevation = PlacementElevationMm;
+            }
+            else if (placement.BaseElevationMm is null)
+            {
+                piece.PlacementBaseElevation = SceneLayerCalculator.GetContainingLevelElevation(
+                    piece.PositionZ,
+                    LayerHeightMm);
+            }
+
+            if (resolveStacking)
+            {
+                if (IsGridSnapEnabled)
+                {
+                    var position = _gridSnapService.SnapFootprintPosition(
+                        new TerrainVector3(piece.PositionX, piece.PositionY, piece.PlacementBaseElevation),
+                        piece.Footprint,
+                        GridSizeMm);
+                    piece.PositionX = position.X;
+                    piece.PositionY = position.Y;
+                }
+
+                piece.PositionZ = GetStackedElevation(piece, piece.PlacementBaseElevation);
             }
 
             TrackPieceForLayers(piece);
@@ -120,7 +140,7 @@ public partial class SceneViewModel : ObservableObject
             };
         }
 
-        return await AddModelAsync(model, placement, cancellationToken) is not null;
+        return await AddModelAsync(model, placement, cancellationToken, resolveStacking: false) is not null;
     }
 
     public void Select(ScenePieceViewModel? piece)
@@ -191,6 +211,10 @@ public partial class SceneViewModel : ObservableObject
         SelectedPiece.PositionX += x;
         SelectedPiece.PositionY += y;
         SelectedPiece.PositionZ = Math.Max(0, SelectedPiece.PositionZ + z);
+        if (Math.Abs(z) > double.Epsilon)
+        {
+            SelectedPiece.PlacementBaseElevation = Math.Max(0, SelectedPiece.PlacementBaseElevation + z);
+        }
         NotifySceneChanged();
     }
 
@@ -198,6 +222,21 @@ public partial class SceneViewModel : ObservableObject
     {
         if (SelectedPiece is null) return;
         SelectedPiece.RotationZ = (SelectedPiece.RotationZ + degrees) % 360;
+        if (IsGridSnapEnabled)
+        {
+            var position = _gridSnapService.SnapFootprintPosition(
+                new TerrainVector3(
+                    SelectedPiece.PositionX,
+                    SelectedPiece.PositionY,
+                    SelectedPiece.PlacementBaseElevation),
+                SelectedPiece.Footprint,
+                GridSizeMm);
+            SelectedPiece.PositionX = position.X;
+            SelectedPiece.PositionY = position.Y;
+            SelectedPiece.PositionZ = GetStackedElevation(
+                SelectedPiece,
+                SelectedPiece.PlacementBaseElevation);
+        }
         NotifySceneChanged();
     }
 
@@ -207,6 +246,19 @@ public partial class SceneViewModel : ObservableObject
         RefreshLayerDefinitions();
         SceneChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private double GetStackedElevation(ScenePieceViewModel movingPiece, double minimumElevation) =>
+        ModelStackingService.GetPlacementElevation(
+            movingPiece.Footprint,
+            Pieces
+                .Where(piece =>
+                    !ReferenceEquals(piece, movingPiece) &&
+                    SceneLayerCalculator.IsOnSameLevel(
+                        piece.PlacementBaseElevation,
+                        minimumElevation,
+                        LayerHeightMm))
+                .Select(piece => piece.StackedFootprint),
+            minimumElevation);
 
     private static LineGeometry3D CreateGridGeometry(double spacing, int linesEachDirection)
     {
@@ -232,8 +284,4 @@ public partial class SceneViewModel : ObservableObject
         indices.Add(offset + 1);
     }
 }
-
-
-
-
 

@@ -18,17 +18,15 @@ public sealed class GridSnapServiceTests
     }
 
     [Theory]
-    [InlineData(25, 6.35, 7, 6.35)]
-    [InlineData(50, 12.7, 7, 12.7)]
-    [InlineData(75, 19.05, 17, 19.05)]
-    [InlineData(100, 25.4, 17, 25.4)]
-    public void Snap_SupportsPercentageBasedGridIntervals(
-        int percentage,
+    [InlineData(false, 25.4, 17, 25.4)]
+    [InlineData(true, 6.35, 7, 6.35)]
+    public void GetSnapInterval_UsesQuarterGridOnlyForPrecisionMovement(
+        bool usePrecisionSnap,
         double expectedInterval,
         double input,
         double expected)
     {
-        var interval = GridSnapService.OneInchMm * percentage / 100d;
+        var interval = _service.GetSnapInterval(GridSnapService.OneInchMm, usePrecisionSnap);
         var result = _service.Snap(new TerrainVector3(input, input, 0), interval);
 
         Assert.Equal(expectedInterval, interval, 5);
@@ -42,5 +40,29 @@ public sealed class GridSnapServiceTests
         var result = _service.Snap(new TerrainVector3(0, 0, -30), 25.4, snapZ: true);
 
         Assert.Equal(0, result.Z);
+    }
+
+    [Fact]
+    public void SnapFootprintPosition_AlignsRotatedFootprintEdgeToGrid()
+    {
+        var footprint = new OrientedFootprint(
+            CentreX: 25.4,
+            CentreY: 12.7,
+            Width: 50.8,
+            Depth: 25.4,
+            RotationDegrees: 90);
+
+        var result = _service.SnapFootprintPosition(
+            TerrainVector3.Zero,
+            footprint,
+            GridSnapService.OneInchMm);
+        var movedFootprint = footprint with
+        {
+            CentreX = footprint.CentreX + result.X,
+            CentreY = footprint.CentreY + result.Y
+        };
+
+        Assert.Equal(0, movedFootprint.MinimumX % GridSnapService.OneInchMm, 5);
+        Assert.Equal(0, movedFootprint.MinimumY % GridSnapService.OneInchMm, 5);
     }
 }

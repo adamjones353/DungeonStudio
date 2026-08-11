@@ -6,6 +6,31 @@ public sealed class SceneLayerCalculatorTests
 {
     [Theory]
     [InlineData(0, 0)]
+    [InlineData(49.9, 0)]
+    [InlineData(50, 50)]
+    [InlineData(76, 50)]
+    public void GetContainingLevelElevation_ReturnsFloorBelowStackedPiece(
+        double positionZ,
+        double expectedElevation)
+    {
+        Assert.Equal(expectedElevation, SceneLayerCalculator.GetContainingLevelElevation(positionZ, 50));
+    }
+
+    [Theory]
+    [InlineData(0, 20, true)]
+    [InlineData(50, 74.9, true)]
+    [InlineData(0, 50, false)]
+    [InlineData(50, 100, false)]
+    public void IsOnSameLevel_UsesConfiguredLevelGrouping(
+        double firstElevation,
+        double secondElevation,
+        bool expected)
+    {
+        Assert.Equal(expected, SceneLayerCalculator.IsOnSameLevel(firstElevation, secondElevation, 50));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
     [InlineData(6, 0)]
     [InlineData(24.9, 0)]
     [InlineData(25, 50)]

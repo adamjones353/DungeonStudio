@@ -6,6 +6,6 @@ public interface ILibraryIndexService
 {
     Task<IReadOnlyList<ModelLibraryItem>> ScanAsync(
         string rootFolder,
-        IProgress<int>? progress = null,
+        IProgress<LibraryScanProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }

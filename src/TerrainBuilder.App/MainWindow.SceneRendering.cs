@@ -75,8 +75,8 @@ public partial class MainWindow
     {
         var mousePoint = e.GetPosition(TerrainViewport);
         var hit = TerrainViewport.FindHits(mousePoint)
-            .FirstOrDefault(result => result.ModelHit is InstancingMeshGeometryModel3D &&
-                                      ResolveScenePiece(result) is not null);
+            .Where(result => result.IsValid && ResolveScenePiece(result) is not null)
+            .MinBy(result => result.Distance);
         var piece = ResolveScenePiece(hit);
         if (piece is null) return;
 
@@ -91,6 +91,7 @@ public partial class MainWindow
         draggedPiece = piece;
         pieceDragChanged = false;
         dragPlaneZ = piece.PositionZ;
+        dragBaseElevationZ = piece.PlacementBaseElevation;
         dragOffsetX = piece.PositionX - worldPoint.Value.X;
         dragOffsetY = piece.PositionY - worldPoint.Value.Y;
         TerrainViewport.CaptureMouse();
@@ -131,5 +132,3 @@ public partial class MainWindow
         (float)matrix.M31, (float)matrix.M32, (float)matrix.M33, (float)matrix.M34,
         (float)matrix.OffsetX, (float)matrix.OffsetY, (float)matrix.OffsetZ, (float)matrix.M44);
 }
-
-

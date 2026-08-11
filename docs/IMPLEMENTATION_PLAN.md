@@ -15,7 +15,7 @@
 - Drag-and-drop placement from the library into the scene.
 - Resizable library and inspector panels.
 - Mouse dragging for placed pieces and middle-mouse camera panning.
-- Configurable 25%, 50%, 75%, and 100% grid snapping increments.
+- Full-grid snapping with temporary 25% precision snapping while Ctrl is held during dragging.
 - Selection highlighting, copy/paste at the viewport cursor, and camera focus controls.
 - Direct saving back to an opened project file.
 - Print-export folder containing copies of required source STL files.

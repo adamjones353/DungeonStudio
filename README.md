@@ -15,7 +15,7 @@ DungeonStudio is a native Windows desktop application for arranging modular tabl
 - Provides an interactive HelixToolkit SharpDX viewport with orbit, middle-mouse pan, zoom, a view cube, and a visible one-inch grid.
 - Selects and highlights scene pieces, then supports mouse dragging, grid movement, rotation, deletion, copy, and paste-at-cursor.
 - Groups model base elevations into configurable floor levels (50 mm by default), supports vertical higher/current/lower navigation, and can render only the active level while retaining hidden pieces in the project and print list.
-- Enables or disables grid snapping with 25%, 50%, 75%, and 100% grid increments.
+- Enables or disables full-grid snapping, with temporary 25% precision snapping while Ctrl is held during dragging.
 - Saves and loads `.terrainproject` files that reference the original STL paths.
 - Saves subsequent changes directly to the loaded project file.
 - Builds a print list grouped by the original STL file.
@@ -87,6 +87,7 @@ The generated `artifacts` directory is intentionally excluded from source contro
 | --- | --- |
 | Left-click | Select a piece |
 | Left-drag selected piece | Move the piece across the placement plane |
+| `Ctrl` + left-drag selected piece | Move with 25% grid snapping |
 | Right-drag | Orbit the camera |
 | Middle-drag | Pan the camera |
 | Mouse wheel | Zoom |
@@ -144,7 +145,6 @@ Do not commit STL libraries, saved terrain projects, generated thumbnails, local
 DungeonStudio is available under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, study, modify, and redistribute the software for permitted noncommercial purposes, but commercial use and selling the software are not permitted by that licence.
 
 Because commercial use is restricted, this is a **source-available noncommercial project**, not an OSI-approved open-source project. This distinction does not affect the goal: the program and its source remain freely available for personal, hobby, educational, charitable, and other permitted noncommercial use.
-
 
 
 

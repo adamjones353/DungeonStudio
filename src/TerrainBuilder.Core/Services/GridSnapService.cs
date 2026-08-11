@@ -5,6 +5,17 @@ namespace TerrainBuilder.Core.Services;
 public sealed class GridSnapService
 {
     public const double OneInchMm = 25.4;
+    public const double PrecisionSnapFraction = 0.25;
+
+    public double GetSnapInterval(double gridSizeMm, bool usePrecisionSnap)
+    {
+        if (gridSizeMm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(gridSizeMm), "Grid size must be greater than zero.");
+        }
+
+        return usePrecisionSnap ? gridSizeMm * PrecisionSnapFraction : gridSizeMm;
+    }
 
     public TerrainVector3 Snap(TerrainVector3 position, double gridSizeMm, bool snapZ = false)
     {
@@ -19,8 +30,20 @@ public sealed class GridSnapService
             snapZ ? Math.Max(0, SnapToGridLine(position.Z, gridSizeMm)) : Math.Max(0, position.Z));
     }
 
+    public TerrainVector3 SnapFootprintPosition(
+        TerrainVector3 position,
+        OrientedFootprint footprintAtPosition,
+        double gridSizeMm)
+    {
+        var snappedMinimum = Snap(
+            new TerrainVector3(footprintAtPosition.MinimumX, footprintAtPosition.MinimumY, position.Z),
+            gridSizeMm);
+        return new TerrainVector3(
+            position.X + snappedMinimum.X - footprintAtPosition.MinimumX,
+            position.Y + snappedMinimum.Y - footprintAtPosition.MinimumY,
+            position.Z);
+    }
+
     private static double SnapToGridLine(double value, double interval) =>
         Math.Round(value / interval, MidpointRounding.AwayFromZero) * interval;
 }
-
-

@@ -11,6 +11,7 @@ public sealed class StlParser : IStlParser
 {
     private const int BinaryHeaderSize = 84;
     private const int BinaryTriangleSize = 50;
+    private const int DimensionReadBatchTriangles = 2500;
 
     public async Task<ModelDimensions> ReadDimensionsAsync(
         string filePath,
@@ -86,14 +87,23 @@ public sealed class StlParser : IStlParser
         ValidateTriangleCount(triangleCount, stream.Length);
 
         var bounds = BoundsBuilder.Empty;
-        var triangle = new byte[BinaryTriangleSize];
-        for (var index = 0u; index < triangleCount; index++)
+        var triangles = new byte[BinaryTriangleSize * DimensionReadBatchTriangles];
+        var remainingTriangles = triangleCount;
+        while (remainingTriangles > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await stream.ReadExactlyAsync(triangle, cancellationToken);
-            bounds.Include(ReadVector(triangle, 12));
-            bounds.Include(ReadVector(triangle, 24));
-            bounds.Include(ReadVector(triangle, 36));
+            var batchTriangleCount = (int)Math.Min(remainingTriangles, DimensionReadBatchTriangles);
+            var batchLength = batchTriangleCount * BinaryTriangleSize;
+            await stream.ReadExactlyAsync(triangles.AsMemory(0, batchLength), cancellationToken);
+            for (var index = 0; index < batchTriangleCount; index++)
+            {
+                var triangleOffset = index * BinaryTriangleSize;
+                bounds.Include(ReadVector(triangles, triangleOffset + 12));
+                bounds.Include(ReadVector(triangles, triangleOffset + 24));
+                bounds.Include(ReadVector(triangles, triangleOffset + 36));
+            }
+
+            remainingTriangles -= (uint)batchTriangleCount;
         }
 
         return bounds.ToDimensions();

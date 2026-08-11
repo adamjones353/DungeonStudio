@@ -12,14 +12,22 @@ public partial class ScenePieceViewModel : ObservableObject
     private static readonly Material SelectedMaterial = PhongMaterials.Gold;
     private readonly double rotationCentreX;
     private readonly double rotationCentreY;
+    private readonly double footprintWidth;
+    private readonly double footprintDepth;
 
     public ScenePieceViewModel(ModelLibraryItem source, MeshGeometry3D geometry, PlacedTerrainPiece? placement = null)
     {
         Source = source;
         Geometry = geometry;
         var positions = geometry.Positions ?? throw new InvalidDataException("The STL mesh contains no positions.");
-        rotationCentreX = (positions.Min(vertex => vertex.X) + positions.Max(vertex => vertex.X)) / 2;
-        rotationCentreY = (positions.Min(vertex => vertex.Y) + positions.Max(vertex => vertex.Y)) / 2;
+        var minimumX = positions.Min(vertex => vertex.X);
+        var maximumX = positions.Max(vertex => vertex.X);
+        var minimumY = positions.Min(vertex => vertex.Y);
+        var maximumY = positions.Max(vertex => vertex.Y);
+        rotationCentreX = (minimumX + maximumX) / 2;
+        rotationCentreY = (minimumY + maximumY) / 2;
+        footprintWidth = maximumX - minimumX;
+        footprintDepth = maximumY - minimumY;
         InstanceId = placement?.InstanceId ?? Guid.NewGuid();
         DisplayName = placement?.DisplayName ?? source.DisplayName;
         var position = placement?.Position ?? TerrainVector3.Zero;
@@ -28,6 +36,7 @@ public partial class ScenePieceViewModel : ObservableObject
         positionX = position.X;
         positionY = position.Y;
         positionZ = position.Z;
+        placementBaseElevation = placement?.BaseElevationMm ?? position.Z;
         rotationZ = rotation.Z;
         scaleX = scale.X;
         scaleY = scale.Y;
@@ -40,6 +49,19 @@ public partial class ScenePieceViewModel : ObservableObject
     public ModelLibraryItem Source { get; }
     public MeshGeometry3D Geometry { get; }
     public ModelDimensions Dimensions => Source.Dimensions;
+    [ObservableProperty]
+    private double placementBaseElevation;
+    public OrientedFootprint Footprint => GetFootprintAt(PositionX, PositionY);
+    public OrientedFootprint GetFootprintAt(double positionX, double positionY) => new(
+        rotationCentreX * ScaleX + positionX,
+        rotationCentreY * ScaleY + positionY,
+        footprintWidth * Math.Abs(ScaleX),
+        footprintDepth * Math.Abs(ScaleY),
+        RotationZ);
+    public StackedFootprint StackedFootprint => new(
+        Footprint,
+        PositionZ,
+        Dimensions.HeightMm * Math.Abs(ScaleZ));
     public Point3D PivotPoint => new(
         rotationCentreX * ScaleX + PositionX,
         rotationCentreY * ScaleY + PositionY,
@@ -94,6 +116,7 @@ public partial class ScenePieceViewModel : ObservableObject
         SourceStlPath = Source.FullPath,
         DisplayName = DisplayName,
         Position = new TerrainVector3(PositionX, PositionY, PositionZ),
+        BaseElevationMm = PlacementBaseElevation,
         RotationDegrees = new TerrainVector3(0, 0, RotationZ),
         Scale = new TerrainVector3(ScaleX, ScaleY, ScaleZ)
     };
@@ -111,6 +134,3 @@ public partial class ScenePieceViewModel : ObservableObject
         Transform = group;
     }
 }
-
-
-

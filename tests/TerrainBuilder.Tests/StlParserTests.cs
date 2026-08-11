@@ -60,6 +60,28 @@ public sealed class StlParserTests
         await Assert.ThrowsAsync<InvalidDataException>(() => new StlParser().ReadDimensionsAsync(path));
     }
 
+    [Fact]
+    public async Task ReadDimensions_ReadsAcrossBinaryBatchBoundaries()
+    {
+        const int triangleCount = 2501;
+        using var folder = new TemporaryFolder();
+        var path = Path.Combine(folder.Path, "large-binary.stl");
+        var stl = new byte[84 + triangleCount * 50];
+        Encoding.ASCII.GetBytes("Terrain Builder batch test").CopyTo(stl, 0);
+        BitConverter.GetBytes((uint)triangleCount).CopyTo(stl, 80);
+        var finalTriangleOffset = 84 + (triangleCount - 1) * 50;
+        WriteVector(stl, finalTriangleOffset + 12, new Vector3(0, 0, 0));
+        WriteVector(stl, finalTriangleOffset + 24, new Vector3(12, 0, 0));
+        WriteVector(stl, finalTriangleOffset + 36, new Vector3(0, 8, 10));
+        await File.WriteAllBytesAsync(path, stl);
+
+        var dimensions = await new StlParser().ReadDimensionsAsync(path);
+
+        Assert.Equal(12, dimensions.WidthMm, 5);
+        Assert.Equal(8, dimensions.DepthMm, 5);
+        Assert.Equal(10, dimensions.HeightMm, 5);
+    }
+
     private static byte[] CreateBinaryTriangle(Vector3 a, Vector3 b, Vector3 c)
     {
         var output = new byte[84 + 50];

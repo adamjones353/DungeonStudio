@@ -23,18 +23,13 @@ public partial class SceneViewModel
     {
         if (copiedSource is null || copiedPlacement is null) return;
 
-        var offset = IsGridSnapEnabled ? GridSnapIncrementMm : GridSizeMm * 0.25;
+        var offset = IsGridSnapEnabled ? GridSizeMm : GridSizeMm * 0.25;
         var targetPosition = mousePastePosition is { } mousePosition
             ? new TerrainVector3(mousePosition.X, mousePosition.Y, copiedPlacement.Position.Z)
             : new TerrainVector3(
                 copiedPlacement.Position.X + offset,
                 copiedPlacement.Position.Y + offset,
                 copiedPlacement.Position.Z);
-        if (mousePastePosition is not null && IsGridSnapEnabled)
-        {
-            targetPosition = _gridSnapService.Snap(targetPosition, GridSnapIncrementMm, snapZ: false);
-        }
-
         var pastedPlacement = copiedPlacement with
         {
             InstanceId = Guid.NewGuid(),
@@ -54,4 +49,3 @@ public partial class SceneViewModel
 
     private bool HasClipboard() => copiedSource is not null && copiedPlacement is not null;
 }
-

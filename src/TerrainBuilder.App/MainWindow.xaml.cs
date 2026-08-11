@@ -1,7 +1,5 @@
 using System.Windows;
 using System.Windows.Input;
-using HelixToolkit.SharpDX;
-using HelixToolkit.Wpf.SharpDX;
 using TerrainBuilder.App.ViewModels;
 
 namespace TerrainBuilder.App;
@@ -33,15 +31,6 @@ public partial class MainWindow : Window
         if (ViewModel.Library.SelectedModel is not null)
         {
             await ViewModel.AddSelectedModelCommand.ExecuteAsync(ViewModel.Library.SelectedModel);
-        }
-    }
-
-    private void ViewportMouseDown3D(object sender, MouseDown3DEventArgs e)
-    {
-        var piece = ResolveScenePiece(e.HitTestResult);
-        if (piece is not null)
-        {
-            ViewModel.Scene.Select(piece);
         }
     }
 }

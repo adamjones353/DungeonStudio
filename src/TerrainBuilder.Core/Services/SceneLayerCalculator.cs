@@ -22,6 +22,16 @@ public static class SceneLayerCalculator
             MidpointRounding.AwayFromZero) + 1);
     }
 
+    public static double GetContainingLevelElevation(double positionZ, double layerHeightMm)
+    {
+        var height = NormalizeLayerHeight(layerHeightMm);
+        return Math.Floor(Math.Max(0, positionZ) / height) * height;
+    }
+
+    public static bool IsOnSameLevel(double firstElevation, double secondElevation, double layerHeightMm) =>
+        GetLayerElevation(firstElevation, layerHeightMm) ==
+        GetLayerElevation(secondElevation, layerHeightMm);
+
     public static double NormalizeLayerHeight(double layerHeightMm) =>
         double.IsFinite(layerHeightMm)
             ? Math.Clamp(layerHeightMm, MinimumLayerHeightMm, MaximumLayerHeightMm)

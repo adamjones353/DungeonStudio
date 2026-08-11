@@ -28,6 +28,33 @@ public sealed class JsonLibraryIndexServiceTests
         Assert.Equal(2, parser.DimensionReads);
     }
 
+    [Fact]
+    public async Task Scan_ReportsCurrentFileAndFinishesAtOneHundredPercent()
+    {
+        using var folder = new TemporaryFolder();
+        var firstPath = Path.Combine(folder.Path, "first.stl");
+        var secondPath = Path.Combine(folder.Path, "second.stl");
+        await File.WriteAllTextAsync(firstPath, "placeholder");
+        await File.WriteAllTextAsync(secondPath, "placeholder");
+        var updates = new List<LibraryScanProgress>();
+        var service = new JsonLibraryIndexService(
+            new CountingParser(),
+            Path.Combine(folder.Path, "cache", "index.json"));
+
+        await service.ScanAsync(folder.Path, new SynchronousProgress<LibraryScanProgress>(updates.Add));
+
+        Assert.Contains(updates, update => update.CurrentFilePath == firstPath);
+        Assert.Contains(updates, update => update.CurrentFilePath == secondPath);
+        Assert.Equal(2, updates
+            .SelectMany(update => update.CompletedItems ?? [])
+            .Select(item => item.FullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count());
+        Assert.Equal(100, updates[^1].Percentage);
+        Assert.Equal(2, updates[^1].CompletedFiles);
+        Assert.Equal(2, updates[^1].TotalFiles);
+    }
+
     private sealed class CountingParser : IStlParser
     {
         public int DimensionReads { get; private set; }
@@ -40,5 +67,10 @@ public sealed class JsonLibraryIndexServiceTests
 
         public Task<StlMeshData> LoadMeshAsync(string filePath, CancellationToken cancellationToken = default) =>
             Task.FromResult(new StlMeshData([], [], [], ModelDimensions.Empty));
+    }
+
+    private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 }

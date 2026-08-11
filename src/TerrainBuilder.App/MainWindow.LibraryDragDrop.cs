@@ -77,7 +77,8 @@ public partial class MainWindow
             ViewModel.Scene.MoveSelectedTo(
                 worldPoint.Value.X,
                 worldPoint.Value.Y,
-                placementElevation);
+                placementElevation,
+                usePrecisionSnap: Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
             ViewModel.StatusMessage = ViewModel.Scene.IsGridSnapEnabled
                 ? $"Placed {model.DisplayName} at the nearest snap point."
                 : $"Placed {model.DisplayName}.";
@@ -105,6 +106,5 @@ public partial class MainWindow
         return null;
     }
 }
-
 
 
